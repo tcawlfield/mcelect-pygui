@@ -3,11 +3,20 @@ name = "mcelect-hvplot"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "Topher Cawlfield", email = "ccawlfield@scitec.com" }
-]
+authors = [{ name = "Topher Cawlfield", email = "tcawlfield@gmail.com" }]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "arrow>=1.4.0",
+    "awkward>=2.14.0",
+    "hvplot>=0.12.2",
+    "jupyter>=1.1.1",
+    "jupyter-bokeh>=4.1.0",
+    "mcelect",
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "polars>=1.44.2",
+    "pydantic>=2.13.5",
+]
 
 [project.scripts]
 mcelect-hvplot = "mcelect_hvplot:main"
@@ -15,3 +24,6 @@ mcelect-hvplot = "mcelect_hvplot:main"
 [build-system]
 requires = ["uv_build>=0.12.6,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+mcelect = { path = "../vote-sim/crates/mcelect-py", editable = true }
