@@ -18,14 +18,14 @@ from mcelect.config import RRV, Config, Electorate, Faction, PluralityTopN, QGau
 pn.extension("tabulator")
 
 DEFAULT_FACTIONS = pd.DataFrame(
-    dict(
-        name=["A", "B", "C", "D"],
-        popularity=[1.0, 0.95, 0.5, 0.3],
-        center_x=[-1.0, 1.0, -1.0, 1.0],
-        center_y=[1.0, 1.0, -1.0, -1.0],
-        voter_spread=[1.0, 1.0, 1.0, 1.0],
-        candidate_spread=[1.0, 1.0, 1.0, 1.0],
-    )
+    {
+        "name": ["A", "B", "C", "D"],
+        "popularity": [1.0, 0.95, 0.5, 0.3],
+        "center_x": [-1.0, 1.0, -1.0, 1.0],
+        "center_y": [1.0, 1.0, -1.0, -1.0],
+        "voter_spread": [1.0, 1.0, 1.0, 1.0],
+        "candidate_spread": [1.0, 1.0, 1.0, 1.0],
+    }
 )
 
 
@@ -58,12 +58,12 @@ def build_config(
                 candidate_distribution="Uniform",
                 factions=[
                     Faction(
-                        popularity=row.popularity,
-                        voter_center=[row.center_x, row.center_y],
-                        voter_spread=row.voter_spread,
-                        candidate_spread=row.candidate_spread,
+                        popularity=row["popularity"],
+                        voter_center=[row["center_x"], row["center_y"]],
+                        voter_spread=row["voter_spread"],
+                        candidate_spread=row["candidate_spread"],
                     )
-                    for row in factions.itertuples()
+                    for row in factions.to_dict("records")
                 ],
             )
         ],
@@ -74,15 +74,20 @@ def build_config(
     )
 
 
+def required[T](value: T | None, name: str) -> T:
+    """`value`, or a ValueError naming the input if it was left empty."""
+    if value is None:
+        raise ValueError(f"{name} is empty")
+    return value
+
+
 def winners(results: ak.Array, method: str, names: np.ndarray) -> pd.DataFrame:
     """One row per seat won by `method` across all trials: the winner's faction
     name and position."""
     seats = ak.from_regular(results.methods[method].winners, axis=1)
     factions = ak.to_numpy(ak.flatten(results.electorate.faction[seats]))
     positions = ak.to_numpy(ak.flatten(results.electorate.positions[seats]))
-    return pd.DataFrame(
-        dict(faction=names[factions], x=positions[:, 0], y=positions[:, 1])
-    )
+    return pd.DataFrame({"faction": names[factions], "x": positions[:, 0], "y": positions[:, 1]})
 
 
 def population_share(results: ak.Array) -> np.ndarray:
@@ -94,10 +99,12 @@ def population_share(results: ak.Array) -> np.ndarray:
 def share_plot(names: np.ndarray, population: np.ndarray, by_method: dict[str, pd.DataFrame]):
     """Grouped bars: each faction's share of the voters, next to its share
     of the seats won by each method."""
-    shares = [pd.DataFrame(dict(faction=names, source="population", share=population))]
+    shares = [pd.DataFrame({"faction": names, "source": "population", "share": population})]
     for method, df in by_method.items():
         share = df.faction.value_counts(normalize=True).reindex(names, fill_value=0)
-        shares.append(pd.DataFrame(dict(faction=share.index, source=method, share=share.values)))
+        shares.append(
+            pd.DataFrame({"faction": share.index, "source": method, "share": share.values})
+        )
     return pd.concat(shares).hvplot.bar(
         x="faction",
         y="share",
@@ -113,7 +120,7 @@ def position_plot(method: str, df: pd.DataFrame, factions: pd.DataFrame, cmap: d
     """Winning candidates' positions, colored by faction, with faction centers marked."""
     # Both elements need the same sizing, or hvplot's default width/height on one of
     # them conflicts with the aspect and holoviews warns.
-    sizing = dict(data_aspect=1, frame_width=330)
+    sizing = {"data_aspect": 1, "frame_width": 330}
     winners = df.hvplot.scatter(
         x="x",
         y="y",
@@ -124,9 +131,11 @@ def position_plot(method: str, df: pd.DataFrame, factions: pd.DataFrame, cmap: d
         title=f"{method} winner positions",
         **sizing,
     )
-    centers = factions.rename(columns=dict(center_x="x", center_y="y")).hvplot.scatter(
-        x="x", y="y", hover_cols=["name"], **sizing
-    ).opts(marker="x", size=15, line_width=3, color="black")
+    centers = (
+        factions.rename(columns={"center_x": "x", "center_y": "y"})
+        .hvplot.scatter(x="x", y="y", hover_cols=["name"], **sizing)
+        .opts(marker="x", size=15, line_width=3, color="black")
+    )
     return winners * centers
 
 
@@ -137,14 +146,14 @@ def create_app() -> pn.template.FastListTemplate:
         layout="fit_columns",
         sizing_mode="stretch_width",
         # Sort arrows would truncate the headers in the narrow sidebar.
-        configuration=dict(columnDefaults=dict(headerSort=False)),
-        titles=dict(
-            popularity="pop.",
-            center_x="x",
-            center_y="y",
-            voter_spread="voter σ",
-            candidate_spread="cand. σ",
-        ),
+        configuration={"columnDefaults": {"headerSort": False}},
+        titles={
+            "popularity": "pop.",
+            "center_x": "x",
+            "center_y": "y",
+            "voter_spread": "voter σ",
+            "candidate_spread": "cand. σ",
+        },
     )
     add_faction = pn.widgets.Button(name="Add faction", button_type="light")
     trials = pn.widgets.IntInput(name="Trials", value=5000, start=1, step=1000)
@@ -161,8 +170,14 @@ def create_app() -> pn.template.FastListTemplate:
         df = factions.value
         used = set(df.name)
         name = next(c for c in map(chr, range(ord("A"), ord("Z") + 1)) if c not in used)
-        row = dict(name=name, popularity=1.0, center_x=0.0, center_y=0.0,
-                   voter_spread=1.0, candidate_spread=0.5)
+        row = {
+            "name": name,
+            "popularity": 1.0,
+            "center_x": 0.0,
+            "center_y": 0.0,
+            "voter_spread": 1.0,
+            "candidate_spread": 0.5,
+        }
         factions.value = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
     async def run(_=None):
@@ -171,14 +186,15 @@ def create_app() -> pn.template.FastListTemplate:
         try:
             config = build_config(
                 active,
-                voters=voters.value,
-                candidates=candidates.value,
-                committee_size=committee_size.value,
-                sigma=sigma.value,
-                rrv_ranks=rrv_ranks.value,
-                rrv_k=rrv_k.value,
+                voters=required(voters.value, voters.name),
+                candidates=required(candidates.value, candidates.name),
+                committee_size=required(committee_size.value, committee_size.name),
+                sigma=required(sigma.value, sigma.name),
+                rrv_ranks=required(rrv_ranks.value, rrv_ranks.name),
+                rrv_k=required(rrv_k.value, rrv_k.name),
             )
-            table = await asyncio.to_thread(mcelect.simulate, config, trials.value)
+            n_trials = required(trials.value, trials.name)
+            table = await asyncio.to_thread(mcelect.simulate, config, n_trials)
         except ValueError as e:  # includes pydantic's ValidationError
             output.objects = [pn.pane.Alert(str(e), alert_type="danger")]
             return

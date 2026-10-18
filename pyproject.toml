@@ -31,6 +31,9 @@ build-backend = "uv_build"
 [tool.uv.sources]
 mcelect = { path = "../vote-sim/crates/mcelect-py", editable = true }
 
+[tool.ruff]
+line-length = 100
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
