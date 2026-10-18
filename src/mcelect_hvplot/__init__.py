@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from mcelect-hvplot!")
+from .app import create_app, main
+
+__all__ = ["create_app", "main"]
