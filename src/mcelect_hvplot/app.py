@@ -106,6 +106,9 @@ def share_plot(factions: pd.DataFrame, by_method: dict[str, pd.DataFrame]):
 
 def position_plot(method: str, df: pd.DataFrame, factions: pd.DataFrame, cmap: dict[str, str]):
     """Winning candidates' positions, colored by faction, with faction centers marked."""
+    # Both elements need the same sizing, or hvplot's default width/height on one of
+    # them conflicts with the aspect and holoviews warns.
+    sizing = dict(data_aspect=1, frame_width=330)
     winners = df.hvplot.scatter(
         x="x",
         y="y",
@@ -114,18 +117,29 @@ def position_plot(method: str, df: pd.DataFrame, factions: pd.DataFrame, cmap: d
         size=3,
         alpha=0.3,
         title=f"{method} winner positions",
-        data_aspect=1,
-        frame_width=450,
+        **sizing,
     )
     centers = factions.rename(columns=dict(center_x="x", center_y="y")).hvplot.scatter(
-        x="x", y="y", hover_cols=["name"]
+        x="x", y="y", hover_cols=["name"], **sizing
     ).opts(marker="x", size=15, line_width=3, color="black")
     return winners * centers
 
 
 def create_app() -> pn.template.FastListTemplate:
     factions = pn.widgets.Tabulator(
-        DEFAULT_FACTIONS.copy(), show_index=False, layout="fit_data_table", height=200
+        DEFAULT_FACTIONS.copy(),
+        show_index=False,
+        layout="fit_columns",
+        sizing_mode="stretch_width",
+        # Sort arrows would truncate the headers in the narrow sidebar.
+        configuration=dict(columnDefaults=dict(headerSort=False)),
+        titles=dict(
+            popularity="pop.",
+            center_x="x",
+            center_y="y",
+            voter_spread="voter σ",
+            candidate_spread="cand. σ",
+        ),
     )
     add_faction = pn.widgets.Button(name="Add faction", button_type="light")
     trials = pn.widgets.IntInput(name="Trials", value=5000, start=1, step=1000)
@@ -173,7 +187,7 @@ def create_app() -> pn.template.FastListTemplate:
         by_method = {m: winners(results, m, names) for m in results.methods.fields}
         output.objects = [
             share_plot(active, by_method),
-            pn.Row(*(position_plot(m, df, active, cmap) for m, df in by_method.items())),
+            pn.FlexBox(*(position_plot(m, df, active, cmap) for m, df in by_method.items())),
         ]
 
     add_faction.on_click(on_add_faction)
