@@ -3,6 +3,8 @@ name = "mcelect-hvplot"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Topher Cawlfield", email = "tcawlfield@gmail.com" }]
 requires-python = ">=3.14"
 dependencies = [
@@ -23,7 +25,7 @@ dependencies = [
 mcelect-hvplot = "mcelect_hvplot:main"
 
 [build-system]
-requires = ["uv_build>=0.12.6,<0.13.0"]
+requires = ["uv_build>=0.12.6,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
