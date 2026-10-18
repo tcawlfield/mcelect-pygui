@@ -35,4 +35,6 @@ mcelect = { path = "../vote-sim/crates/mcelect-py", editable = true }
 dev = [
     "pytest>=9.1.1",
     "pytest-playwright>=0.10.0",
+    "ruff>=0.17.1",
+    "ty>=0.0.89",
 ]

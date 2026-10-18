@@ -20,11 +20,11 @@ pn.extension("tabulator")
 DEFAULT_FACTIONS = pd.DataFrame(
     dict(
         name=["A", "B", "C", "D"],
-        popularity=[1.0, 0.95, 0.5, 0.0],
-        center_x=[-2.0, 2.0, -2.0, 2.0],
+        popularity=[1.0, 0.95, 0.5, 0.3],
+        center_x=[-1.0, 1.0, -1.0, 1.0],
         center_y=[1.0, 1.0, -1.0, -1.0],
         voter_spread=[1.0, 1.0, 1.0, 1.0],
-        candidate_spread=[0.5, 0.5, 0.5, 0.5],
+        candidate_spread=[1.0, 1.0, 1.0, 1.0],
     )
 )
 
@@ -85,13 +85,18 @@ def winners(results: ak.Array, method: str, names: np.ndarray) -> pd.DataFrame:
     )
 
 
-def share_plot(factions: pd.DataFrame, by_method: dict[str, pd.DataFrame]):
-    """Grouped bars: each faction's share of the population, next to its share
+def population_share(results: ak.Array) -> np.ndarray:
+    """Each faction's share of all voters, pooled across trials."""
+    voters = ak.to_numpy(ak.sum(results.electorate.faction_voters, axis=0))
+    return voters / voters.sum()
+
+
+def share_plot(names: np.ndarray, population: np.ndarray, by_method: dict[str, pd.DataFrame]):
+    """Grouped bars: each faction's share of the voters, next to its share
     of the seats won by each method."""
-    population = factions.popularity / factions.popularity.sum()
-    shares = [pd.DataFrame(dict(faction=factions.name, source="population", share=population))]
+    shares = [pd.DataFrame(dict(faction=names, source="population", share=population))]
     for method, df in by_method.items():
-        share = df.faction.value_counts(normalize=True).reindex(factions.name, fill_value=0)
+        share = df.faction.value_counts(normalize=True).reindex(names, fill_value=0)
         shares.append(pd.DataFrame(dict(faction=share.index, source=method, share=share.values)))
     return pd.concat(shares).hvplot.bar(
         x="faction",
@@ -186,8 +191,8 @@ def create_app() -> pn.template.FastListTemplate:
         cmap = dict(zip(factions.value.name, itertools.cycle(Category10_10)))
         by_method = {m: winners(results, m, names) for m in results.methods.fields}
         output.objects = [
-            share_plot(active, by_method),
             pn.FlexBox(*(position_plot(m, df, active, cmap) for m, df in by_method.items())),
+            share_plot(names, population_share(results), by_method),
         ]
 
     add_faction.on_click(on_add_faction)
